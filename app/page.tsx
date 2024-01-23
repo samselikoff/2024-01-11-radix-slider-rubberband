@@ -1,18 +1,7 @@
 "use client";
 
 import * as Slider from "@radix-ui/react-slider";
-import {
-  animate,
-  circIn,
-  circOut,
-  easeIn,
-  motion,
-  useMotionTemplate,
-  useMotionValue,
-  useSpring,
-  useTransform,
-} from "framer-motion";
-import { useEffect } from "react";
+import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 
 // sigmoid function
 function decay(x: number) {
@@ -20,7 +9,7 @@ function decay(x: number) {
 }
 
 const OVERFLOW_PIXELS = 75;
-const STRETCH_PERCENTAGE = 0.75;
+const STRETCH_PERCENTAGE = 1;
 
 export default function Page() {
   let pixels = useMotionValue(0);
@@ -61,64 +50,27 @@ export default function Page() {
     >
       <div className="w-60">
         <div className="relative">
-          <div className="~border pointer-events-none absolute inset-0 z-10"></div>
           <motion.div
             style={{
               scaleX,
-              scaleY: 0.5,
+              scaleY,
               translateX,
-              borderRadius: 3,
-              overflow: "hidden",
             }}
-            className="relative z-50"
+            className="relative z-50 overflow-hidden rounded-full"
           >
             <Slider.Root
               step={0.1}
               onPointerMove={(e) => {
                 if (e.buttons > 0) {
-                  // console.log(e);
-                  // debugger;
                   let { x } =
                     e.currentTarget.parentElement?.parentElement.getBoundingClientRect();
                   let diff = e.clientX - x;
-                  // console.log(diff);
-                  // console.log("stop");
                   pixels.stop();
                   if (diff < 0) {
-                    // console.log("set");
                     pixels.set(diff);
                   }
-                  // if (diff < 0) {
-                  //   scaleX.set(1.05);
-                  //   // scale.set;
-                  // } else {
-                  //   scaleX.set(1);
-                } else {
-                  // console.log("no-buttons!");
                 }
-                // let diffInPixels = e.clientX - startingValues.current.x;
-                // let widthInPixels = ref.current.getBoundingClientRect().width;
-                // let diffInValue = diffInPixels / (widthInPixels / (max - min));
-                // let newValue = startingValues.current.value + diffInValue;
-                // let valueToStep = roundToStep(newValue, step);
-                // let clampedValue = clamp(valueToStep, min, max);
-                // updateValue(clampedValue);
-                // } else {
-                // console.log("here");
-                // animate(pixels, 0, {
-                // type: "spring",
-                // bounce: 0,
-                //   duration: 5000,
-                // });
-                // }
               }}
-              // onPointerUp={() => {
-              //   animate(pixels, 0, {
-              //     type: "spring",
-              //     bounce: 0.9,
-              //     duration: 2.4,
-              //   });
-              // }}
               className="relative flex h-4 w-full touch-none"
             >
               <Slider.Track className="grow bg-white">
