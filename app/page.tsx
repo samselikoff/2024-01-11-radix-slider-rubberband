@@ -1,24 +1,48 @@
 "use client";
 
+import { SpeakerWaveIcon, SpeakerXMarkIcon } from "@heroicons/react/20/solid";
 import * as Slider from "@radix-ui/react-slider";
 import { animate, motion, useMotionValue, useTransform } from "framer-motion";
-import { ElementRef, useRef } from "react";
+import { useState } from "react";
 
-// sigmoid function
+// Sigmoid function. Output is between 0 and 1.
 function decay(x: number) {
   return 1 / (1 + Math.exp(-x)) - 0.5;
 }
 
-const OVERFLOW_PIXELS = 50;
+const MAX_PIXELS = 100;
 const STRETCH_PERCENTAGE = 0.2;
 
 export default function Page() {
   let pixels = useMotionValue(0);
-
-  let overflowProgress = useTransform(pixels, [0, -OVERFLOW_PIXELS], [0, 1], {
+  let pixelsProgress = useTransform(pixels, [0, -MAX_PIXELS], [0, 1], {
     clamp: false,
   });
-  let overflowProgressDecayed = useTransform(overflowProgress, decay);
+  let pixelsProgressDecayed = useTransform(pixelsProgress, decay);
+  let pixelsWithDecay = useTransform(pixels, (p) => {
+    return decay(p / MAX_PIXELS) * MAX_PIXELS;
+  });
+  // let iconScaleAnimated = useSpring(iconScale, {
+  //   bounce: 0.5,
+  //   duration: 400,
+  // });
+  let [volume, setVolume] = useState(50);
+  // let iconTranslateX = pixels;
+  let iconTranslateX = pixelsProgressDecayed;
+  // let iconTranslateX = useTransform(pixels, (v) => {
+  //   let f = exponentialDecay(0, v, 0);
+  //   console.log(v, f);
+  //   return f;
+  // });
+  // let iconTranslateX = useTransform(pixels, (v) => v / 5);
+  // let iconTranslateX = useTransform(pixels, decay);
+
+  let overflowProgress = useTransform(pixels, [0, -MAX_PIXELS], [0, 1], {
+    clamp: false,
+  });
+  let overflowProgressDecayed = useTransform(pixels, (v) => -v);
+  // let overflowProgressDecayed = useTransform(overflowProgress, decay);
+  // let overflowProgressDecayed = useTransform(pixels, (v) => -decay(v));
 
   let style = {
     scaleX: useTransform(
@@ -40,28 +64,57 @@ export default function Page() {
     ),
   };
 
-  let containerRef = useRef<ElementRef<"div">>(null);
+  // useMotionValueEvent(pixels, "change", (v) => {
+  //   if (pixels.getPrevious() >= 0 && v < 0) {
+  //     console.log("trigger!");
+  //     animate(iconScale, [1, 1.3, 1], {
+  //       // type: "spring",
+  //       // type: "spring",
+  //       // duration: 9,
+  //       // bounce: 0.5,
+  //       duration: 0.3,
+  //     });
+  //   }
+  // });
+
+  // useEffect(() => {
+  //   pixels.on("change", (v) => {
+  //     if (pixels.getPrevious() === 0 && v < 0) {
+  //       console.log("trigger!");
+  //     }
+  //   });
+  // });
 
   return (
-    <div
-      onLostPointerCaptureCapture={() => {
-        animate(pixels, 0, {
-          type: "spring",
-          bounce: 0.4,
-          duration: 0.6,
-        });
-      }}
-      className="flex min-h-screen items-center justify-center bg-gray-950"
-    >
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950">
       <div className="w-full max-w-xs">
-        <div ref={containerRef}>
+        <div className="flex items-center gap-3">
+          <motion.div
+            style={{
+              translateX: iconTranslateX,
+              // translateX: useTransform(style.scaleX, (v) => (v - 1) * -284),
+              // scale: iconScale,
+            }}
+          >
+            <SpeakerXMarkIcon className="size-5 text-white" />
+          </motion.div>
           <Slider.Root
-            step={0.1}
+            value={[volume]}
+            onValueChange={([v]) => setVolume(v)}
+            // step={0.1}
+            onLostPointerCapture={() => {
+              // console.log("here?");
+              animate(pixels, 0, {
+                type: "spring",
+                bounce: 0.4,
+                duration: 0.6,
+              });
+              // iconScale.set(1);
+            }}
             onPointerMove={(e) => {
-              if (e.buttons > 0 && containerRef.current) {
-                let { x } = containerRef.current.getBoundingClientRect();
+              if (e.buttons > 0) {
+                let { x } = e.currentTarget.getBoundingClientRect();
                 let diff = e.clientX - x;
-
                 pixels.stop();
 
                 if (diff < 0) {
@@ -69,18 +122,32 @@ export default function Page() {
                 }
               }
             }}
-            className="relative flex h-4 w-full touch-none items-center"
+            className="relative flex h-3 w-full grow touch-none items-center "
           >
-            <motion.div style={style} className="relative flex h-full grow">
+            {/* <motion.div style={style} className="relative flex h-full grow"> */}
+            <motion.div
+              style={
+                {
+                  // scaleX: useTransform(pixelsWithDecay, (p) => 1 + -p / 256),
+                  // transformOrigin: "right",
+                }
+              }
+              // style={{ scale: 1 + 30 / 256, transformOrigin: "right" }}
+              className="relative flex h-full grow"
+            >
               <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-white">
                 <Slider.Range className="absolute h-full bg-sky-500" />
               </Slider.Track>
             </motion.div>
-
             <Slider.Thumb />
           </Slider.Root>
+          <div>
+            <SpeakerWaveIcon className="size-5 text-white" />
+          </div>
         </div>
       </div>
+
+      <div className="mt-2 tabular-nums text-white">{volume}</div>
     </div>
   );
 }
