@@ -24,27 +24,34 @@ export default function Page() {
   let [volume, setVolume] = useState(50);
 
   // Animation state
-  // let pressed = useMotionValue(0);
   let [pressed, setPressed] = useState(false);
   let pixels = useMotionValue(0);
-  // let pixelsDecayed = useMotionValue(0);
-  // let bounds = useMotionValue(0);
   let [activeVariant, setActiveVariant] = useState("initial");
 
-  let bounds = useTransform(pixels, (v) => {
-    return v < 0 ? -1 : v > SOME_WIDTH ? 1 : 0;
-  });
-
-  let pixelsExtra = useTransform(pixels, (v) => {
-    return v < 0 ? v : v > SOME_WIDTH ? v - SOME_WIDTH : 0;
+  let bounds = useTransform(() => {
+    return pixels.get() < 0 ? -1 : pixels.get() > SOME_WIDTH ? 1 : 0;
   });
 
   let pixelsDecayed = useTransform(() => {
     if (pressed && bounds.get() !== 0) {
-      return pixelsExtra.get();
+      return pixels.get() < 0 ? pixels.get() : pixels.get() - SOME_WIDTH;
     } else {
       return 0;
     }
+  });
+
+  let pixelsDecayedAnimated = useSpring(pixelsDecayed, {
+    damping: 10,
+    mass: 1,
+    stiffness: 100,
+  });
+  let pixelsUsed = pressed ? pixelsDecayed : pixelsDecayedAnimated;
+
+  let scaleX = useTransform(() => {
+    // needs original width
+    return bounds.get() < 0
+      ? 1 - pixelsDecayed.get() / SOME_WIDTH
+      : 1 + pixelsDecayed.get() / SOME_WIDTH;
   });
 
   // let pixelsDecayed = useSpring(pixelsDecayedR);
@@ -106,9 +113,12 @@ export default function Page() {
                 left: { scale: [1, 1.4, 1], transition: { duration: 0.3 } },
               }}
               style={{
-                translateX: useTransform(pixelsDecayed, (v) =>
-                  bounds.get() < 0 ? v : 0,
+                translateX: useTransform(() =>
+                  bounds.get() < 0 ? pixelsUsed.get() : 0,
                 ),
+                // translateX: useTransform(pixelsDecayed, (v) =>
+                //   bounds.get() < 0 ? v : 0,
+                // ),
               }}
             >
               <SpeakerXMarkIcon className="size-5 text-white" />
@@ -126,7 +136,10 @@ export default function Page() {
                 // pressed.set(0);
                 setPressed(false);
               }}
-              onPointerDown={() => {
+              onPointerDown={(e) => {
+                let { x } = e.currentTarget.getBoundingClientRect();
+                let diff = e.clientX - x;
+                pixels.set(diff);
                 // pressed.set(1);
                 setPressed(true);
               }}
@@ -134,35 +147,27 @@ export default function Page() {
               //   pressed.set(0);
               // }}
               onPointerMove={(e) => {
-                let { x } = e.currentTarget.getBoundingClientRect();
-                let diff = e.clientX - x;
-                pixels.set(diff);
+                if (e.buttons > 0) {
+                  let { x } = e.currentTarget.getBoundingClientRect();
+                  let diff = e.clientX - x;
+                  pixels.set(diff);
+                }
               }}
               className="relative flex w-full grow touch-none items-center "
             >
               <motion.div
                 style={{
-                  // scaleX,
-                  scaleX: useTransform(pixelsDecayed, (p) => {
+                  scaleX: useTransform(() => {
                     // needs original width
                     return bounds.get() < 0
-                      ? 1 - p / SOME_WIDTH
-                      : 1 + p / SOME_WIDTH;
+                      ? 1 - pixelsUsed.get() / SOME_WIDTH
+                      : 1 + pixelsUsed.get() / SOME_WIDTH;
                   }),
-                  // scaleX: useTransform(pixelsDecayed, (p) => {
-                  //   console.log(p);
-                  //   return 1 - p / 320;
-                  //   // return pixelsSync.get() < 0 ? 1 - p / 320 : 1 + p / 320;
-                  // }),
-                  // transformOrigin: useTransform(pixelsSync, (p) =>
-                  //   p < 0 ? "right" : "left",
-                  // ),
-                  transformOrigin: useTransform(bounds, (v) =>
-                    v < 0 ? "right" : "left",
+
+                  transformOrigin: useTransform(() =>
+                    bounds.get() < 0 ? "right" : "left",
                   ),
-                  // transformOrigin: useTransform(bounds, (b) =>
-                  //   b === "left" ? "right" : "left",
-                  // ),
+
                   height: "var(--height)",
                 }}
                 className="relative flex grow"
@@ -179,8 +184,8 @@ export default function Page() {
                 right: { scale: [1, 1.4, 1], transition: { duration: 0.3 } },
               }}
               style={{
-                translateX: useTransform(pixelsDecayed, (p) =>
-                  bounds.get() > 0 ? p : 0,
+                translateX: useTransform(() =>
+                  bounds.get() > 0 ? pixelsUsed.get() : 0,
                 ),
               }}
             >
@@ -198,12 +203,12 @@ export default function Page() {
             {pixelsF}
           </motion.span>
         </p>
-        <p className="text-white">
+        {/* <p className="text-white">
           Pixels extra:{" "}
           <motion.span className="mt-2 tabular-nums text-white">
             {pixelsExtra}
           </motion.span>
-        </p>
+        </p> */}
         <p className="text-white">
           Pressed:{" "}
           <motion.span className="mt-2 tabular-nums text-white">
