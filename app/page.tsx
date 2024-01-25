@@ -154,8 +154,13 @@ export default function Page() {
                   let diff = e.clientX - x;
                   pixels.stop();
                   pixelsSync.set(diff);
+
                   if (diff < 0) {
                     pixels.set(diff);
+                  } else if (diff > 352) {
+                    pixels.set(diff - 352);
+                  } else {
+                    pixels.set(0);
                   }
                 }
               }}
@@ -164,11 +169,16 @@ export default function Page() {
               {/* <motion.div style={style} className="relative flex h-full grow"> */}
               <motion.div
                 style={{
-                  scaleX: useTransform(pixelsDecayed, (p) => 1 + -p / 320),
+                  // works for left
+                  // scaleX: useTransform(pixelsDecayed, (p) => 1 + -p / 320),
+                  // transformOrigin: "right",
+
+                  scaleX: useTransform(pixelsDecayed, (p) => 1 + p / 320),
+                  transformOrigin: "left",
+
+                  height: "var(--height)",
                   // scaleX: "calc(100% + 10px)",
                   // scaleX: pixels,
-                  height: "var(--height)",
-                  transformOrigin: "right",
                 }}
                 // animate={{ height: "var(--height)" }}
                 // transition={{ duration: 2 }}
@@ -189,10 +199,10 @@ export default function Page() {
       </div>
 
       <div className="mt-2 tabular-nums text-white">{volume}</div>
-      {/* <motion.div className="mt-2 tabular-nums text-white">{pixels}</motion.div>
+      <motion.div className="mt-2 tabular-nums text-white">{pixels}</motion.div>
       <motion.div className="mt-2 tabular-nums text-white">
         {pixelsSync}
-      </motion.div> */}
+      </motion.div>
       {/* <motion.div className="mt-2 tabular-nums text-white">{pixels}</motion.div>
       <motion.div className="mt-2 tabular-nums text-white">
         {pixelsDecayed}
