@@ -16,7 +16,7 @@ function decay(x: number) {
   return 1 / (1 + Math.exp(-x)) - 0.5;
 }
 
-const MAX_PIXELS = 50;
+const MAX_PIXELS = 75;
 const STRETCH_PERCENTAGE = 0.2;
 
 export default function Page() {
@@ -106,83 +106,84 @@ export default function Page() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950">
-      <div className="w-full max-w-xs">
+      <div className="w-full">
         <motion.div
           whileHover={{ "--height": "12px", scale: 1.1 }}
-          style={{ "--height": "6px" }}
-          className="group flex cursor-grab items-center gap-3 active:cursor-grabbing "
+          // style={{ "--height": "16px" }}
+          style={{ "--height": "6px", scale: 1 }}
+          className="~bg-gray-500 flex cursor-grab justify-center p-3 active:cursor-grabbing"
           transition={{
             type: "spring",
-            bounce: 0.4,
-            duration: 0.6,
+            bounce: 0,
+            duration: 0.4,
           }}
         >
-          <motion.div
-            // variants={{
-            //   normal: { scale: 1 },
-            //   pop: { scale: [1, 1.5, 1] },
-            // }}
-            // animate={something}
-            style={{
-              translateX: pixelsDecayed,
-              // translateX: useTransform(style.scaleX, (v) => (v - 1) * -284),
-              // scale: [1, 1.5, 1],
-              scale: iconScale,
-            }}
-          >
-            <SpeakerXMarkIcon className="size-5 text-white" />
-          </motion.div>
-          <Slider.Root
-            value={[volume]}
-            onValueChange={([v]) => setVolume(v)}
-            // step={0.1}
-            onLostPointerCapture={() => {
-              // console.log("here?");
-              pixelsSync.set(0);
-              animate(pixels, 0, {
-                type: "spring",
-                bounce: 0.4,
-                duration: 0.6,
-              });
-              // iconScale.set(1);
-            }}
-            onPointerMove={(e) => {
-              if (e.buttons > 0) {
-                let { x } = e.currentTarget.getBoundingClientRect();
-                let diff = e.clientX - x;
-                pixels.stop();
-
-                pixelsSync.set(diff);
-
-                if (diff < 0) {
-                  pixels.set(diff);
-                }
-              }
-            }}
-            className="transit relative flex w-full grow touch-none items-center "
-          >
-            {/* <motion.div style={style} className="relative flex h-full grow"> */}
+          <div className="flex w-full max-w-sm items-center gap-3">
             <motion.div
+              // variants={{
+              //   normal: { scale: 1 },
+              //   pop: { scale: [1, 1.5, 1] },
+              // }}
+              // animate={something}
               style={{
-                scaleX: useTransform(pixelsDecayed, (p) => 1 + -p / 256),
-                // scaleX: "calc(100% + 10px)",
-                // scaleX: pixels,
-                height: "var(--height)",
-                transformOrigin: "right",
+                translateX: pixelsDecayed,
+                // translateX: useTransform(style.scaleX, (v) => (v - 1) * -284),
+                // scale: [1, 1.5, 1],
+                scale: iconScale,
               }}
-              // animate={{ height: "var(--height)" }}
-              // transition={{ duration: 2 }}
-              // style={{ scale: 1 + 30 / 256, transformOrigin: "right" }}
-              className="relative flex grow"
             >
-              <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-white">
-                <Slider.Range className="absolute h-full bg-sky-500" />
-              </Slider.Track>
+              <SpeakerXMarkIcon className="size-5 text-white" />
             </motion.div>
-            <Slider.Thumb />
-          </Slider.Root>
-          <div>
-            <SpeakerWaveIcon className="size-5 text-white" />
+            <Slider.Root
+              value={[volume]}
+              onValueChange={([v]) => setVolume(v)}
+              // step={0.1}
+              onLostPointerCapture={() => {
+                // console.log("here?");
+                pixelsSync.set(0);
+                animate(pixels, 0, {
+                  type: "spring",
+                  bounce: 0.4,
+                  duration: 0.6,
+                });
+                // iconScale.set(1);
+              }}
+              onPointerMove={(e) => {
+                if (e.buttons > 0) {
+                  let { x } = e.currentTarget.getBoundingClientRect();
+                  let diff = e.clientX - x;
+                  pixels.stop();
+                  pixelsSync.set(diff);
+                  if (diff < 0) {
+                    pixels.set(diff);
+                  }
+                }
+              }}
+              className="relative flex w-full grow touch-none items-center "
+            >
+              {/* <motion.div style={style} className="relative flex h-full grow"> */}
+              <motion.div
+                style={{
+                  scaleX: useTransform(pixelsDecayed, (p) => 1 + -p / 320),
+                  // scaleX: "calc(100% + 10px)",
+                  // scaleX: pixels,
+                  height: "var(--height)",
+                  transformOrigin: "right",
+                }}
+                // animate={{ height: "var(--height)" }}
+                // transition={{ duration: 2 }}
+                // style={{ scale: 1 + 30 / 256, transformOrigin: "right" }}
+                className="relative flex grow"
+              >
+                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-white">
+                  <Slider.Range className="absolute h-full bg-sky-500" />
+                </Slider.Track>
+              </motion.div>
+              <Slider.Thumb />
+            </Slider.Root>
+            <div>
+              <SpeakerWaveIcon className="size-5 text-white" />
+            </div>
           </div>
         </motion.div>
       </div>
