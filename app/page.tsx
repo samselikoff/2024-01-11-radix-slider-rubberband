@@ -7,31 +7,29 @@ import {
   motion,
   useMotionValue,
   useMotionValueEvent,
-  useSpring,
   useTransform,
 } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 // Sigmoid function. Output is between 0 and 1.
 function decay(x: number) {
   return 1 / (1 + Math.exp(-x)) - 0.5;
 }
 
-const MAX_PIXELS = 100;
+const MAX_PIXELS = 50;
 const STRETCH_PERCENTAGE = 0.2;
 
 export default function Page() {
   let pixels = useMotionValue(0);
   let pixelsSync = useMotionValue(0);
-  let pixelsDecayed = useTransform(
-    pixels,
-    [0, -MAX_PIXELS],
-    [0, -MAX_PIXELS / 5],
-  );
-  // let pixelsDecayed = useSpring(pixels);
-  // let pixelsDecayed = useTransform(pixels, (p) => {
-  //   return decay(p / MAX_PIXELS) * MAX_PIXELS;
-  // });
+  // let pixelsDecayed = useTransform(
+  //   pixels,
+  //   [0, -MAX_PIXELS],
+  //   [0, -MAX_PIXELS / 5],
+  // );
+  let pixelsDecayed = useTransform(pixels, (p) => {
+    return decay(p / MAX_PIXELS) * MAX_PIXELS;
+  });
   // let pixelsProgress = useTransform(pixels, [0, -MAX_PIXELS], [0, 1], {
   //   clamp: false,
   // });
@@ -91,7 +89,7 @@ export default function Page() {
         // duration: 9,
         // bounce: 0.5,
         ease: "easeInOut",
-        duration: 0.3,
+        duration: 0.25,
       });
     }
   });
@@ -109,7 +107,16 @@ export default function Page() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950">
       <div className="w-full max-w-xs">
-        <div className="flex items-center gap-3">
+        <motion.div
+          whileHover={{ "--height": "12px", scale: 1.1 }}
+          style={{ "--height": "6px" }}
+          className="group flex cursor-grab items-center gap-3 active:cursor-grabbing "
+          transition={{
+            type: "spring",
+            bounce: 0.4,
+            duration: 0.6,
+          }}
+        >
           <motion.div
             // variants={{
             //   normal: { scale: 1 },
@@ -145,13 +152,14 @@ export default function Page() {
                 let diff = e.clientX - x;
                 pixels.stop();
 
-                // if (diff < 0) {
-                pixels.set(diff);
                 pixelsSync.set(diff);
-                // }
+
+                if (diff < 0) {
+                  pixels.set(diff);
+                }
               }
             }}
-            className="relative flex h-3 w-full grow touch-none items-center "
+            className="transit relative flex w-full grow touch-none items-center "
           >
             {/* <motion.div style={style} className="relative flex h-full grow"> */}
             <motion.div
@@ -159,10 +167,13 @@ export default function Page() {
                 scaleX: useTransform(pixelsDecayed, (p) => 1 + -p / 256),
                 // scaleX: "calc(100% + 10px)",
                 // scaleX: pixels,
+                height: "var(--height)",
                 transformOrigin: "right",
               }}
+              // animate={{ height: "var(--height)" }}
+              // transition={{ duration: 2 }}
               // style={{ scale: 1 + 30 / 256, transformOrigin: "right" }}
-              className="relative flex h-full grow"
+              className="relative flex grow"
             >
               <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-white">
                 <Slider.Range className="absolute h-full bg-sky-500" />
@@ -173,7 +184,7 @@ export default function Page() {
           <div>
             <SpeakerWaveIcon className="size-5 text-white" />
           </div>
-        </div>
+        </motion.div>
       </div>
 
       <div className="mt-2 tabular-nums text-white">{volume}</div>
