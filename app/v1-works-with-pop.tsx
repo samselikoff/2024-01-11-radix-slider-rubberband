@@ -26,14 +26,25 @@ export default function Page() {
   let pixelsDecayed = useTransform(pixels, (p) => {
     return decay(p / MAX_PIXELS) * MAX_PIXELS;
   });
-  let pixelsDecayedLeft = useTransform(pixelsDecayed, (p) =>
-    pixelsSync.get() <= 0 ? p : 0,
-  );
-  let pixelsDecayedRight = useTransform(pixelsDecayed, (p) =>
-    pixelsSync.get() > 0 ? p : 0,
-  );
 
   let [volume, setVolume] = useState(50);
+
+  let iconLeftScale = useMotionValue(1);
+  let iconRightScale = useMotionValue(1);
+
+  useMotionValueEvent(pixelsSync, "change", (v) => {
+    if (pixelsSync.getPrevious() >= 0 && v < 0) {
+      animate(iconLeftScale, [1, 1.4, 1], {
+        ease: "easeInOut",
+        duration: 0.25,
+      });
+    } else if (pixelsSync.getPrevious() <= SOME_WIDTH && v > SOME_WIDTH) {
+      animate(iconRightScale, [1, 1.4, 1], {
+        ease: "easeInOut",
+        duration: 0.25,
+      });
+    }
+  });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950">
@@ -51,8 +62,11 @@ export default function Page() {
           <div className="flex w-full max-w-sm items-center gap-3">
             <motion.div
               style={{
-                translateX: pixelsDecayedLeft,
-                scale: useTransform(pixelsDecayedLeft, [0, -30], [1, 1.4]),
+                translateX: useTransform(pixelsDecayed, (v) => {
+                  return pixelsSync.get() < 0 ? v : 0;
+                }),
+                scale: iconLeftScale,
+                // scale: useTransform(pixels, [0, -MAX_PIXELS / 2], [1, 1.5]),
                 transformOrigin: "right",
               }}
             >
@@ -75,7 +89,6 @@ export default function Page() {
                   pixels.stop();
                   pixelsSync.set(diff);
 
-                  // pixels.set(diff);
                   if (diff < 0) {
                     pixels.set(diff);
                   } else if (diff > SOME_WIDTH) {
@@ -108,10 +121,11 @@ export default function Page() {
             </Slider.Root>
             <motion.div
               style={{
+                // translateX: useTransform(pixelsDecayed, (v) => (v > 0 ? v : 0)),
                 translateX: useTransform(pixelsDecayed, (v) => {
                   return pixelsSync.get() > 0 ? v : 0;
                 }),
-                scale: useTransform(pixels, [0, MAX_PIXELS], [1, 1.4]),
+                scale: iconRightScale,
               }}
             >
               <SpeakerWaveIcon className="size-5 text-white" />
@@ -121,25 +135,13 @@ export default function Page() {
       </div>
 
       <div className="mt-2 tabular-nums text-white">{volume}</div>
-      <div className=" text-center">
+      <div className="invisible text-center">
         <p className="text-white">
-          Pixels:{" "}
+          Pixels decayed:{" "}
           <motion.span className="mt-2 tabular-nums text-white">
             {pixels}
           </motion.span>
         </p>
-        {/* <p className="text-white">
-          Pixels decayed:{" "}
-          <motion.span className="mt-2 tabular-nums text-white">
-            {pixelsDecayed}
-          </motion.span>
-        </p>
-        <p className="text-white">
-          Pixels decayed left:{" "}
-          <motion.span className="mt-2 tabular-nums text-white">
-            {pixelsDecayedLeft}
-          </motion.span>
-        </p> */}
         <p className="text-white">
           Pixels sync:{" "}
           <motion.span className="mt-2 tabular-nums text-white">
@@ -147,6 +149,10 @@ export default function Page() {
           </motion.span>
         </p>
       </div>
+      {/* <motion.div className="mt-2 tabular-nums text-white">{pixels}</motion.div>
+      <motion.div className="mt-2 tabular-nums text-white">
+        {pixelsDecayed}
+      </motion.div> */}
     </div>
   );
 }
