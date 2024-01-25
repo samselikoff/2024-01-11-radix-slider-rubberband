@@ -3,7 +3,6 @@
 import { SpeakerWaveIcon, SpeakerXMarkIcon } from "@heroicons/react/20/solid";
 import * as Slider from "@radix-ui/react-slider";
 import {
-  MotionConfig,
   animate,
   motion,
   useMotionValue,
@@ -25,18 +24,49 @@ export default function Page() {
   let [volume, setVolume] = useState(50);
 
   // Animation state
-  let [bounds, setBounds] = useState("initial");
-  let pixelsOverflow = useMotionValue(0);
+  let [pressed, setPressed] = useState(false);
+  let pixels = useMotionValue(0);
+  let [activeVariant, setActiveVariant] = useState("initial");
+
+  let bounds = useTransform(() => {
+    return pixels.get() < 0 ? -1 : pixels.get() > SOME_WIDTH ? 1 : 0;
+  });
+
+  let pixelsDecayed = useTransform(() => {
+    if (pressed && bounds.get() !== 0) {
+      return pixels.get() < 0 ? pixels.get() : pixels.get() - SOME_WIDTH;
+    } else {
+      return 0;
+    }
+  });
+
+  let pixelsDecayedAnimated = useSpring(pixelsDecayed, {
+    damping: 10,
+    mass: 1,
+    stiffness: 100,
+  });
+  let pixelsUsed = pressed ? pixelsDecayed : pixelsDecayedAnimated;
+
+  useMotionValueEvent(bounds, "change", (v) => {
+    if (v === -1) {
+      setActiveVariant("left");
+    } else if (v === 1) {
+      setActiveVariant("right");
+    } else {
+      setActiveVariant("initial");
+    }
+  });
+
+  let pixelsF = useTransform(pixels, (p) => Math.floor(p));
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950">
       <div className="w-full">
         <motion.div
-          whileHover={{ "--height": "12px", scale: 1.1 }}
+          // whileHover={{ "--height": "12px", scale: 1.1 }}
           style={{ "--height": "6px", scale: 1 }}
           className="~bg-gray-900 flex cursor-grab justify-center p-3 active:cursor-grabbing"
-          initial={false}
-          animate={bounds}
+          animate={activeVariant}
           // transition={{
           //   type: "spring",
           //   bounce: 0,
@@ -46,9 +76,16 @@ export default function Page() {
           <div className="flex w-full max-w-sm items-center gap-3">
             <motion.div
               variants={{
-                left: { scale: [1, 1.4, 1], transition: { duration: 0.25 } },
+                left: { scale: [1, 1.4, 1], transition: { duration: 0.3 } },
               }}
-              style={{ translateX: bounds === "left" ? pixelsOverflow : 0 }}
+              style={{
+                translateX: useTransform(() =>
+                  bounds.get() < 0 ? pixelsUsed.get() : 0,
+                ),
+                // translateX: useTransform(pixelsDecayed, (v) =>
+                //   bounds.get() < 0 ? v : 0,
+                // ),
+              }}
             >
               <SpeakerXMarkIcon className="size-5 text-white" />
             </motion.div>
@@ -57,41 +94,46 @@ export default function Page() {
               value={[volume]}
               onValueChange={([v]) => setVolume(v)}
               onLostPointerCapture={() => {
-                animate(pixelsOverflow, 0, { type: "spring" });
-                // setBounds(pixelsOverflow.get() < 0 ? "left" : "right");
+                // animate(pixels, 0, {
+                //   type: "spring",
+                //   bounce: 0.4,
+                //   duration: 0.6,
+                // });
+                // pressed.set(0);
+                setPressed(false);
               }}
               onPointerDown={(e) => {
-                // setBounds("initial");
+                let { x } = e.currentTarget.getBoundingClientRect();
+                let diff = e.clientX - x;
+                pixels.set(diff);
+                // pressed.set(1);
+                setPressed(true);
               }}
+              // onPointerUp={() => {
+              //   pressed.set(0);
+              // }}
               onPointerMove={(e) => {
                 if (e.buttons > 0) {
                   let { x } = e.currentTarget.getBoundingClientRect();
-                  let pixelsFromLeft = e.clientX - x;
-
-                  if (pixelsFromLeft < 0) {
-                    setBounds("left");
-                    pixelsOverflow.set(pixelsFromLeft);
-                  } else if (pixelsFromLeft > SOME_WIDTH) {
-                    setBounds("right");
-                    pixelsOverflow.set(pixelsFromLeft - SOME_WIDTH);
-                  } else {
-                    setBounds("initial");
-                    pixelsOverflow.set(0);
-                  }
+                  let diff = e.clientX - x;
+                  pixels.set(diff);
                 }
               }}
-              className="~border border-red-500~ relative flex w-full grow touch-none items-center py-2 "
+              className="relative flex w-full grow touch-none items-center "
             >
               <motion.div
                 style={{
                   scaleX: useTransform(() => {
                     // needs original width
-                    return bounds === "left"
-                      ? 1 - pixelsOverflow.get() / SOME_WIDTH
-                      : 1 + pixelsOverflow.get() / SOME_WIDTH;
+                    return bounds.get() < 0
+                      ? 1 - pixelsUsed.get() / SOME_WIDTH
+                      : 1 + pixelsUsed.get() / SOME_WIDTH;
                   }),
 
-                  transformOrigin: bounds === "left" ? "right" : "left",
+                  transformOrigin: useTransform(() =>
+                    bounds.get() < 0 ? "right" : "left",
+                  ),
+
                   height: "var(--height)",
                 }}
                 className="relative flex grow"
@@ -105,9 +147,13 @@ export default function Page() {
 
             <motion.div
               variants={{
-                right: { scale: [1, 1.4, 1], transition: { duration: 0.25 } },
+                right: { scale: [1, 1.4, 1], transition: { duration: 0.3 } },
               }}
-              style={{ translateX: bounds === "right" ? pixelsOverflow : 0 }}
+              style={{
+                translateX: useTransform(() =>
+                  bounds.get() > 0 ? pixelsUsed.get() : 0,
+                ),
+              }}
             >
               <SpeakerWaveIcon className="size-5 text-white" />
             </motion.div>
@@ -116,45 +162,32 @@ export default function Page() {
       </div>
 
       {/* <div className="mt-2 tabular-nums text-white">{volume}</div> */}
-      <div className="text-left text-white">
+      <div className=" text-center">
         <p className="text-white">
-          pixelsOverflow:{" "}
+          Pixels:{" "}
           <motion.span className="mt-2 tabular-nums text-white">
-            {pixelsOverflow}
+            {pixelsF}
           </motion.span>
         </p>
-        <p>Bounds: {bounds}</p>
-        {/* <p className="text-white">
-          pixelsOverflow:{" "}
-          <motion.span className="mt-2 tabular-nums text-white">
-            {pixelsB}
-          </motion.span>
-        </p> */}
-        {/* <p className="text-white">
-          pixelsOverflowAnimated:{" "}
-          <motion.span className="mt-2 tabular-nums text-white">
-            {pixelsC}
-          </motion.span>
-        </p> */}
         {/* <p className="text-white">
           Pixels extra:{" "}
           <motion.span className="mt-2 tabular-nums text-white">
             {pixelsExtra}
           </motion.span>
         </p> */}
-        {/* <p className="text-white">
+        <p className="text-white">
           Pressed:{" "}
           <motion.span className="mt-2 tabular-nums text-white">
             {pressed ? "true" : "false"}
           </motion.span>
-        </p> */}
+        </p>
 
-        {/* <p className="text-white">
+        <p className="text-white">
           Bounds:{" "}
           <motion.span className="mt-2 tabular-nums text-white">
             {bounds}
           </motion.span>
-        </p> */}
+        </p>
 
         {/* <p className="text-white">
           Pixels decayed:{" "}
