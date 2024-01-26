@@ -29,22 +29,11 @@ export default function Page() {
   let ref = useRef<ElementRef<typeof Slider.Root>>(null);
   let [bounds, setBounds] = useState("initial");
   let clientX = useMotionValue(0);
+  let pixelsOverflow = useMotionValue(0);
 
-  // Animated derived
-  let pixelsOverflow = useTransform(() => {
+  let pixelsOverflowNew = useTransform(() => {
     if (ref.current) {
       let { x, width } = ref.current.getBoundingClientRect();
-      let current = clientX.get();
-      let overflow = Math.abs(
-        current - Math.min(x + width, Math.max(x, current)),
-      );
-
-      return overflow;
-    } else {
-      return 0;
-    }
-
-    if (ref.current) {
       if (clientX.get() < x) {
         return clientX.get() - x;
       } else if (clientX.get() > x + width) {
@@ -55,6 +44,16 @@ export default function Page() {
     } else {
       return 0;
     }
+
+    // if ()
+
+    // if (ref.current) {
+    //   let { x, width } = ref.current.getBoundingClientRect();
+    //   return x + width;
+    // } else {
+    //   return 0;
+    // }
+    // // return clientX.get();
   });
 
   return (
@@ -89,11 +88,7 @@ export default function Page() {
                 variants={{
                   left: { scale: [1, 1.4, 1], transition: { duration: 0.25 } },
                 }}
-                style={{
-                  translateX: useTransform(() =>
-                    bounds === "left" ? -pixelsOverflow.get() : 0,
-                  ),
-                }}
+                style={{ translateX: bounds === "left" ? pixelsOverflow : 0 }}
               >
                 <SpeakerXMarkIcon className="size-5 text-white" />
               </motion.div>
@@ -102,7 +97,6 @@ export default function Page() {
                 onValueChange={([v]) => setVolume(v)}
                 ref={ref}
                 onLostPointerCapture={() => {
-                  // animate(pixelsOverflow, 0, { type: "spring" });
                   animate(pixelsOverflow, 0, { type: "spring" });
                 }}
                 onPointerDown={(e) => {
@@ -115,13 +109,13 @@ export default function Page() {
                     let pixelsFromLeft = e.clientX - x;
                     if (pixelsFromLeft < 0) {
                       setBounds("left");
-                      // pixelsOverflow.set(pixelsFromLeft);
+                      pixelsOverflow.set(pixelsFromLeft);
                     } else if (pixelsFromLeft > SOME_WIDTH) {
                       setBounds("right");
-                      // pixelsOverflow.set(pixelsFromLeft - SOME_WIDTH);
+                      pixelsOverflow.set(pixelsFromLeft - SOME_WIDTH);
                     } else {
                       setBounds("initial");
-                      // pixelsOverflow.set(0);
+                      pixelsOverflow.set(0);
                     }
                   }
                 }}
@@ -129,9 +123,12 @@ export default function Page() {
               >
                 <motion.div
                   style={{
-                    scaleX: useTransform(
-                      () => 1 + pixelsOverflow.get() / SOME_WIDTH,
-                    ),
+                    scaleX: useTransform(() => {
+                      // needs original width
+                      return bounds === "left"
+                        ? 1 - pixelsOverflow.get() / SOME_WIDTH
+                        : 1 + pixelsOverflow.get() / SOME_WIDTH;
+                    }),
                     transformOrigin: bounds === "left" ? "right" : "left",
                     height: 6,
                   }}
@@ -163,7 +160,7 @@ export default function Page() {
 
       <div className="mt-8 w-full max-w-sm text-left">
         <Debug label="pixelsOverflow" motionValue={pixelsOverflow} />
-        {/* <Debug label="pixelsOverflowNew" motionValue={pixelsOverflowNew} /> */}
+        <Debug label="pixelsOverflowNew" motionValue={pixelsOverflowNew} />
         <Debug label="clientX" motionValue={clientX} />
         <p>Bounds: {bounds}</p>
       </div>
