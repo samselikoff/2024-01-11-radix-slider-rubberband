@@ -29,33 +29,41 @@ export default function Page() {
   let ref = useRef<ElementRef<typeof Slider.Root>>(null);
   let [bounds, setBounds] = useState("initial");
   let clientX = useMotionValue(0);
+  let pixelsOverflow = useMotionValue(0);
 
   // Animated derived
-  let pixelsOverflow = useTransform(() => {
+  // let pixelsOverflow = useTransform(() => {
+  //   if (ref.current) {
+  //     let { x, width } = ref.current.getBoundingClientRect();
+  //     let current = clientX.get();
+  //     let overflow = Math.abs(
+  //       current - Math.min(x + width, Math.max(x, current)),
+  //     );
+
+  //     return overflow;
+  //   } else {
+  //     return 0;
+  //   }
+  // });
+
+  useMotionValueEvent(clientX, "change", (latest) => {
     if (ref.current) {
       let { x, width } = ref.current.getBoundingClientRect();
-      let current = clientX.get();
-      let overflow = Math.abs(
-        current - Math.min(x + width, Math.max(x, current)),
-      );
 
-      return overflow;
-    } else {
-      return 0;
-    }
-
-    if (ref.current) {
-      if (clientX.get() < x) {
-        return clientX.get() - x;
-      } else if (clientX.get() > x + width) {
-        return clientX.get() - x - width;
+      if (latest < x) {
+        setBounds("left");
+        pixelsOverflow.set(x - latest);
+      } else if (latest > x + width) {
+        setBounds("right");
+        pixelsOverflow.set(latest - x - width);
       } else {
-        return 0;
+        setBounds("initial");
+        pixelsOverflow.set(0);
       }
-    } else {
-      return 0;
     }
   });
+
+  console.log("render");
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
@@ -63,12 +71,6 @@ export default function Page() {
         <MotionConfig transition={{ type: "spring", bounce: 0, duration: 0.4 }}>
           <motion.div
             whileHover="hovered"
-            // whileHover={
-            //   {
-            //     "--height": "12px",
-            //     scale: 1.1,
-            //   } as CSSProperties
-            // }
             style={{ "--height": "6px", scale: 1 } as CSSProperties}
             className="~bg-gray-900 flex cursor-grab justify-center p-3 active:cursor-grabbing"
             initial={false}
@@ -78,11 +80,6 @@ export default function Page() {
                 scale: 1.1,
               },
             }}
-            // transition={{
-            //   type: "spring",
-            //   bounce: 0,
-            //   duration: 0.4,
-            // }}
           >
             <div className="flex w-full max-w-sm items-center gap-3">
               <motion.div
@@ -97,32 +94,17 @@ export default function Page() {
               >
                 <SpeakerXMarkIcon className="size-5 text-white" />
               </motion.div>
+
               <Slider.Root
                 value={[volume]}
                 onValueChange={([v]) => setVolume(v)}
                 ref={ref}
                 onLostPointerCapture={() => {
-                  // animate(pixelsOverflow, 0, { type: "spring" });
                   animate(pixelsOverflow, 0, { type: "spring" });
-                }}
-                onPointerDown={(e) => {
-                  clientX.set(e.clientX);
                 }}
                 onPointerMove={(e) => {
                   if (e.buttons > 0) {
-                    let { x } = e.currentTarget.getBoundingClientRect();
                     clientX.set(e.clientX);
-                    let pixelsFromLeft = e.clientX - x;
-                    if (pixelsFromLeft < 0) {
-                      setBounds("left");
-                      // pixelsOverflow.set(pixelsFromLeft);
-                    } else if (pixelsFromLeft > SOME_WIDTH) {
-                      setBounds("right");
-                      // pixelsOverflow.set(pixelsFromLeft - SOME_WIDTH);
-                    } else {
-                      setBounds("initial");
-                      // pixelsOverflow.set(0);
-                    }
                   }
                 }}
                 className="~border border-red-500~ relative flex w-full grow touch-none items-center py-2 "
@@ -148,6 +130,7 @@ export default function Page() {
                 </motion.div>
                 <Slider.Thumb />
               </Slider.Root>
+
               <motion.div
                 variants={{
                   right: { scale: [1, 1.4, 1], transition: { duration: 0.25 } },
