@@ -10,7 +10,7 @@ export default function Page() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
       <div className="w-full">
-        <div className="~bg-gray-900 flex justify-center">
+        <div className="flex justify-center">
           <div className="flex w-full max-w-sm items-center gap-3">
             <div>
               <SpeakerXMarkIcon className="size-5 text-white" />

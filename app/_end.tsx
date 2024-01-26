@@ -52,7 +52,7 @@ export default function Page() {
       <div className="w-full">
         <motion.div
           whileHover="hovered"
-          className="~bg-gray-900 flex justify-center"
+          className="flex justify-center"
           initial={false}
           animate={bounds}
           variants={{
