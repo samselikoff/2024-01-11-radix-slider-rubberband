@@ -49,7 +49,7 @@ export default function Page() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="w-full">
+      <div className="w-full px-12">
         <motion.div
           whileHover="hovered"
           className="flex justify-center"
@@ -89,7 +89,7 @@ export default function Page() {
                   clientX.set(e.clientX);
                 }
               }}
-              className="relative flex w-full grow cursor-grab touch-none items-center py-4 active:cursor-grabbing"
+              className="relative flex w-full grow cursor-grab touch-none select-none items-center py-4 active:cursor-grabbing"
             >
               <motion.div
                 style={{
