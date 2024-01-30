@@ -81,13 +81,13 @@ export default function Page() {
               value={[volume]}
               onValueChange={([v]) => setVolume(v)}
               ref={ref}
-              onLostPointerCapture={() => {
-                animate(pixelsOverflow, 0, { type: "spring", bounce: 0.5 });
-              }}
               onPointerMove={(e) => {
                 if (e.buttons > 0) {
                   clientX.set(e.clientX);
                 }
+              }}
+              onLostPointerCapture={() => {
+                animate(pixelsOverflow, 0, { type: "spring", bounce: 0.5 });
               }}
               className="relative flex w-full grow cursor-grab touch-none select-none items-center py-4 active:cursor-grabbing"
             >
