@@ -287,3 +287,90 @@ Now use it in style:
 ```
 
 It works!
+
+# 7: Refactor xLeft and xRight to x using region
+
+Let's take a look at what we have. Let's add `region` to debug:
+
+```tsx
+<div>region: {region}</div>
+```
+
+xLeft and xRight are derived from position when we drag but they animate independently based on the region we let go in. If let go in left, left side should animate but right should stay at 0.
+
+Now that we have region, should be able to refactor xLeft and xRight to a single variable.
+
+Let's bring back x:
+
+```tsx
+let x = useMotionValue(0);
+```
+
+and set it in the change event:
+
+```tsx
+useMotionValueEvent(position, "change", (latestValue) => {
+  if (latestValue < 0) {
+    setRegion("left");
+    xLeft.set(latestValue);
+    x.set(latestValue);
+  } else if (latestValue > 320) {
+    setRegion("right");
+    xRight.set(latestValue - 320);
+    x.set(latestValue - 320);
+  } else {
+    setRegion("middle");
+    xLeft.set(0);
+    xRight.set(0);
+    x.set(0);
+  }
+});
+```
+
+Now if we change the left icon from `xLeft` to use `x`:
+
+```tsx
+<motion.div style={{ x: x }} />
+```
+
+it tracks it – but also moves when we drag right.
+
+Let's use `region` so it only moves when in the left:
+
+```tsx
+<motion.div style={{ x: region === "left" ? x : 0 }} />
+```
+
+Boom! Same right right.
+
+```tsx
+<motion.div style={{ x: region === "right" ? x : 0 }} />
+```
+
+Nice. Now on release need to animate x.
+
+```tsx
+onLostPointerCapture={() => {
+  animate(xLeft, 0, { type: "spring", bounce: 0.5 });
+  animate(xRight, 0, { type: "spring", bounce: 0.5 });
+  animate(x, 0, { type: "spring", bounce: 0.5 });
+}}
+```
+
+Awesome.
+
+And now in the bar we can replace xLeft and xRight with x:
+
+```tsx
+scaleX: useTransform(() => {
+  return region === "left"
+    ? (320 - x.get()) / 320
+    : (320 + x.get()) / 320;
+}),
+```
+
+Sick. Delete xLeft/xRight, show x in debug. All working.
+
+This region state is nice and easy, and everything still works when we let go.
+
+# 8: Something
