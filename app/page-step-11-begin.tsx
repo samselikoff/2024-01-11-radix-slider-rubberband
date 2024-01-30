@@ -44,6 +44,7 @@ export default function Page() {
       }
 
       overflow.set(decay(newValue / MAX_PIXELS) * MAX_PIXELS);
+      // overflow.set(newValue);
     }
   });
 
@@ -62,10 +63,6 @@ export default function Page() {
             className="flex w-full items-center gap-3 px-60"
           >
             <motion.div
-              animate={{
-                scale: region === "left" ? [1, 1.4, 1] : 1,
-                transition: { duration: 0.25 },
-              }}
               style={{
                 x: useTransform(() =>
                   region === "left" ? -overflow.get() / scale.get() : 0,
@@ -117,10 +114,6 @@ export default function Page() {
             </Slider.Root>
 
             <motion.div
-              animate={{
-                scale: region === "right" ? [1, 1.4, 1] : 1,
-                transition: { duration: 0.25 },
-              }}
               style={{
                 x: useTransform(() =>
                   region === "right" ? overflow.get() / scale.get() : 0,
@@ -133,7 +126,7 @@ export default function Page() {
         </div>
       </div>
 
-      <div className="hidden text-center">
+      <div className=" text-center">
         <div>
           clientX:{" "}
           <motion.span className="tabular-nums">
@@ -150,9 +143,9 @@ export default function Page() {
         <div>region: {region}</div>
       </div>
 
-      <p className="mt-1 text-center font-medium">
+      {/* <p className="mt-1 text-center font-medium">
         Volume: <span className="tabular-nums">{volume}</span>
-      </p>
+      </p> */}
     </div>
   );
 }

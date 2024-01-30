@@ -595,3 +595,116 @@ overflow.set(decay(newValue / MAX_PIXELS) * MAX_PIXELS);
 Now can tweak.
 
 # 10: Grow on hover
+
+Let's add a hover on grow effect.
+
+```tsx
+<motion.div
+  whileHover={{ scale: 1.1 }}
+  transition={{
+    type: "spring",
+    bounce: 0,
+    duration: 0.4,
+  }}
+  className="flex w-full max-w-sm items-center gap-3"
+/>
+```
+
+Can see something's off... remove decay().
+
+Our icons are scaled but moving by pixels. need to account for scale.
+
+Another motion value:
+
+```tsx
+let scale = useMotionValue(1);
+```
+
+Refactor to use:
+
+```tsx
+<motion.div
+  onHoverStart={() =>
+    animate(scale, 1.2, { type: "spring", bounce: 0, duration: 0.4 })
+  }
+  onHoverEnd={() =>
+    animate(scale, 1, { type: "spring", bounce: 0, duration: 0.4 })
+  }
+  style={{ scale }}
+/>
+```
+
+Now update icons `x` to account for scale:
+
+```tsx
+<motion.div
+  style={{
+    x: useTransform(() =>
+      region === "left" ? -overflow.get() / scale.get() : 0,
+    ),
+  }}
+/>
+```
+
+```tsx
+<motion.div
+  style={{
+    x: useTransform(() =>
+      region === "right" ? overflow.get() / scale.get() : 0,
+    ),
+  }}
+/>
+```
+
+Lets also animate height of slider with some transforms:
+
+```tsx
+<motion.div
+  style={{
+    transformOrigin: region === "left" ? "right" : "left",
+    scaleX: useTransform(() => {
+      if (ref.current) {
+        return 1 + overflow.get() / ref.current.getBoundingClientRect().width;
+      }
+    }),
+    height: useTransform(scale, [1, 1.2], [6, 16]),
+  }}
+/>
+```
+
+Account for layout shift with margin:
+
+```tsx
+marginTop: useTransform(scale, [1, 1.2], [0, -5]),
+marginBottom: useTransform(scale, [1, 1.2], [0, -5]),
+```
+
+Another, scaleY:
+
+```tsx
+scaleY: useTransform(() => 1 - overflow.get() / MAX_PIXELS),
+```
+
+And why not opacity:
+
+```tsx
+<motion.div
+  style={{ scale, opacity: useTransform(scale, [1, 1.2], [0.8, 1]) }}
+  className="flex w-full items-center gap-3 px-60"
+/>
+```
+
+# 11: Bounce icons
+
+Final piece of polish. When we overflow left let's bounce this icon:
+
+```tsx
+<motion.div
+  animate={{
+    scale: region === "left" ? [1, 1.4, 1] : 1,
+    transition: { duration: 0.25 },
+  }}
+/>
+```
+
+Done!! Uncomment state.
