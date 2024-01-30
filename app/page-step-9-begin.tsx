@@ -11,13 +11,6 @@ import {
 } from "framer-motion";
 import { ElementRef, useRef, useState } from "react";
 
-// Sigmoid function. Output is between 0 and 1.
-function decay(value: number) {
-  return 1 / (1 + Math.exp(-value)) - 0.5;
-}
-
-const MAX_PIXELS = 75;
-
 export default function Page() {
   let [volume, setVolume] = useState(50);
 
@@ -29,28 +22,25 @@ export default function Page() {
   useMotionValueEvent(clientX, "change", (latestValue) => {
     if (ref.current) {
       let { left, right } = ref.current.getBoundingClientRect();
-      let newValue;
 
       if (latestValue < left) {
         setRegion("left");
-        newValue = left - latestValue;
+        overflow.set(left - latestValue);
       } else if (latestValue > right) {
         setRegion("right");
-        newValue = latestValue - right;
+        overflow.set(latestValue - right);
       } else {
         setRegion("middle");
-        newValue = 0;
+        overflow.set(0);
       }
-
-      overflow.set(decay(newValue / MAX_PIXELS) * MAX_PIXELS);
     }
   });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="w-full px-12">
+      <div className="w-full">
         <div className="flex justify-center">
-          <div className="flex w-full max-w-sm items-center gap-3">
+          <div className="flex w-full max-w-xs items-center gap-3">
             <motion.div
               style={{
                 x: useTransform(() =>

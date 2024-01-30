@@ -48,9 +48,9 @@ export default function Page() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="w-full px-12">
+      <div className="w-full">
         <div className="flex justify-center">
-          <div className="flex w-full max-w-sm items-center gap-3">
+          <div className="flex w-full max-w-xs items-center gap-3">
             <motion.div
               style={{
                 x: useTransform(() =>

@@ -373,4 +373,225 @@ Sick. Delete xLeft/xRight, show x in debug. All working.
 
 This region state is nice and easy, and everything still works when we let go.
 
-# 8: Something
+# 8: Refactor magic number (width)
+
+Right now 320 hard coded - change `max-w-sm` to `max-w-xs` and it breaks.
+
+Where does it come from? `bounds` in onPointerMove. But really its this element. So let's get a ref.
+
+```tsx
+let ref = useRef<ElementRef<typeof Slider.Root>>(null);
+
+<Slider.Root ref={ref} />;
+```
+
+Update onPointerMove
+
+```tsx
+onPointerMove={(e) => {
+  if (e.buttons > 0 && ref.current) {
+    let bounds = ref.current.getBoundingClientRect();
+    let overflow = e.clientX - bounds.x;
+
+    position.set(overflow);
+  }
+}}
+```
+
+and our change event
+
+```tsx
+useMotionValueEvent(position, "change", (latestValue) => {
+  if (ref.current) {
+    let { width } = ref.current.getBoundingClientRect();
+
+    if (latestValue < 0) {
+      setRegion("left");
+      x.set(latestValue);
+    } else if (latestValue > width) {
+      setRegion("right");
+      x.set(latestValue - width);
+    } else {
+      setRegion("middle");
+      x.set(0);
+    }
+  }
+});
+```
+
+And finally scale:
+
+```tsx
+<motion.div
+  style={{
+    scaleX: useTransform(() => {
+      if (ref.current) {
+        let { width } = ref.current.getBoundingClientRect();
+
+        return region === "left"
+          ? (width - x.get()) / width
+          : (width + x.get()) / width;
+      }
+    }),
+    transformOrigin: region === "left" ? "right" : "left",
+  }}
+/>
+```
+
+Sweet! No more magic number, works for max-w-xs.
+
+Let's clean this up a bit more.
+
+We're using bounds to set position, then also using it in change listener to calculate x. Let's simplify pointermove to just set clientx
+
+```tsx
+onPointerMove={(e) => {
+  if (e.buttons > 0) {
+    clientX.set(e.clientX);
+  }
+}}
+```
+
+```tsx
+useMotionValueEvent(clientX, "change", (latestValue) => {
+  if (ref.current) {
+    let { left, right } = ref.current.getBoundingClientRect();
+
+    if (latestValue < left) {
+      setRegion("left");
+      x.set(latestValue - left);
+    } else if (latestValue > right) {
+      setRegion("right");
+      x.set(latestValue - right);
+    } else {
+      setRegion("middle");
+      x.set(0);
+    }
+  }
+});
+```
+
+Nice!
+
+Now let's look at scale:
+
+```tsx
+scaleX: useTransform(() => {
+  if (ref.current) {
+    let bounds = ref.current.getBoundingClientRect();
+
+    return region === "left"
+      ? (bounds.width - x.get()) / bounds.width
+      : (bounds.width + x.get()) / bounds.width;
+  }
+```
+
+`x` is not the best name – originally used because the icons move by x. Let's rename it to `overflow`.
+
+Now overflow is negative when region is left, positive when region is right, so this scale code has to add or subtract based on that. Let's make overflow a pure magnitude - so when left, swap these:
+
+```tsx
+setRegion("left");
+overflow.set(left - latestValue);
+```
+
+Positive now. Fix left icon:
+
+```tsx
+<motion.div
+  style={{
+    x: useTransform(() => (region === "left" ? -overflow.get() : 0)),
+  }}
+/>
+```
+
+and now can simplify scaleX:
+
+```tsx
+scaleX: useTransform(() => {
+  if (ref.current) {
+    let { width } = ref.current.getBoundingClientRect();
+
+    return (width + overflow.get()) / width;
+  }
+}),
+```
+
+or more simply, 100% + the overflow:
+
+```tsx
+return 1 + overflow.get() / width;
+```
+
+## QUESTION FOR RYAN
+
+stop?
+
+```tsx
+onPointerMove={(e) => {
+  if (e.buttons > 0) {
+    overflow.stop();
+    clientX.set(e.clientX);
+  }
+}}
+```
+
+# 9: Decay
+
+Let's decay this stretching a bit. Could do something simple:
+
+```tsx
+overflow.set((left - latestValue) / 3);
+```
+
+but that's linear. Let's use something that decays more the farther we drag.
+
+```tsx
+// Sigmoid function. Output is between 0 and 1.
+function decay(value: number) {
+  return 1 / (1 + Math.exp(-value)) - 0.5;
+}
+```
+
+decay maps [0, 1] to [0, 1]. So pick a max pixels and convert to fraction:
+
+```tsx
+let newValue = left - latestValue;
+overflow.set(decay(newValue / 100) * 100);
+```
+
+Awesome! Let's cover all branches.
+
+```tsx
+let { left, right } = ref.current.getBoundingClientRect();
+let newValue;
+
+if (latestValue < left) {
+  setRegion("left");
+  newValue = left - latestValue;
+} else if (latestValue > right) {
+  setRegion("right");
+  newValue = latestValue - right;
+} else {
+  setRegion("middle");
+  newValue = 0;
+}
+
+overflow.set(decay(newValue / 75) * 75);
+```
+
+Make a const for max pixels:
+
+```tsx
+const MAX_PIXELS = 75;
+```
+
+and use:
+
+```tsx
+overflow.set(decay(newValue / MAX_PIXELS) * MAX_PIXELS);
+```
+
+Now can tweak.
+
+# 10: Grow on hover
