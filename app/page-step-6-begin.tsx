@@ -14,20 +14,16 @@ import { useState } from "react";
 export default function Page() {
   let [volume, setVolume] = useState(50);
 
-  let [region, setRegion] = useState("middle");
   let position = useMotionValue(0);
   let xLeft = useMotionValue(0);
   let xRight = useMotionValue(0);
 
   useMotionValueEvent(position, "change", (latestValue) => {
     if (latestValue < 0) {
-      setRegion("left");
       xLeft.set(latestValue);
     } else if (latestValue > 320) {
-      setRegion("right");
       xRight.set(latestValue - 320);
     } else {
-      setRegion("middle");
       xLeft.set(0);
       xRight.set(0);
     }
@@ -62,12 +58,16 @@ export default function Page() {
               <motion.div
                 style={{
                   scaleX: useTransform(() => {
-                    return region === "left"
-                      ? (320 - xLeft.get()) / 320
-                      : (320 + xRight.get()) / 320;
+                    return (320 + xRight.get()) / 320;
                   }),
-                  transformOrigin: region === "left" ? "right" : "left",
+                  transformOrigin: "left",
                 }}
+                // style={{
+                //   scaleX: useTransform(() => {
+                //     return (320 - xLeft.get()) / 320;
+                //   }),
+                //   transformOrigin: "right",
+                // }}
                 className="flex h-1.5 grow"
               >
                 <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-white">
@@ -84,6 +84,15 @@ export default function Page() {
         </div>
       </div>
 
+      {/* <div>
+        region: <motion.span className="tabular-nums">{region}</motion.span>
+      </div> */}
+      {/* <div>
+        position:{" "}
+        <motion.span className="tabular-nums">
+          {useTransform(() => Math.floor(position.get()))}
+        </motion.span>
+      </div> */}
       <div>
         position:{" "}
         <motion.span className="tabular-nums">

@@ -35,7 +35,7 @@ onPointerMove={(e) => {
     let bounds = e.currentTarget.getBoundingClientRect();
     let overflow = e.clientX - bounds.x;
 
-    if (overflow <= 0) {
+    if (overflow < 0) {
       x.set(overflow);
     }
   }
@@ -45,7 +45,7 @@ onPointerMove={(e) => {
 Works – but can get "stuck". Reset to 0.
 
 ```tsx
-if (overflow <= 0) {
+if (overflow < 0) {
   x.set(overflow);
 } else {
   x.set(0);
@@ -125,7 +125,7 @@ style={{
 
 Now bar tracks the icon – even when we let go and animate it!! so cool.
 
-# New 5: Animate Right icon
+# 5: Animate Right icon
 
 Debug to get a sense
 
@@ -156,25 +156,43 @@ and also debug it:
 </div>
 ```
 
-Cool, tracks mouse along whole way! So if we express x as a function of position on the left side, we should be able to get the right side working too.
+Cool, tracks mouse along whole way!
 
-So if we look, when position is negative, x tracks it. So x is derived... excpet when we let go. Doesn't track.
+So, if we can rewrite `x` so that it's derived from `position` on the left side, we should be able to get the right side working too.
 
-So we want x to track position sometimes, but we also want to be able to animate it other times. So let's use a hook from FM called useMotionValueEvent to respond to changes in position.
+And it looks pretty straightforward: when `position` is negative, `x` tracks it; and when `position` is positive, `x` is 0.
+
+...except when we let go. When we let go, we actually want to animate `x` independent of `position`.
+
+So, `x` is not purely derived from `position`, but it should track its changes when `position` is negative. And Framer Motion has a Hook that's perfect for this: it's called `useMotionValueEvent`:
 
 ```tsx
-useMotionValueEvent(position, "change", (latest) => {
-  if (latest < 0) {
-    x.set(latest);
+useMotionValueEvent(position, "change", (latestValue) => {
+  console.log(latestValue);
+});
+```
+
+and we'll see that every time it changes, we'll see that event callback being fired.
+
+So let's grab the code from the pointermove callback that's updating `x` and save, so now pointermove is only updating `position`, and paste it in the change event handler:
+
+```tsx
+useMotionValueEvent(position, "change", (latestValue) => {
+  if (latestValue <= 0) {
+    x.set(latestValue);
   } else {
     x.set(0);
   }
 });
 ```
 
-Look at that – when position is negative x tracks, but x is also its own motionvalue so we can animate.
+and now `x` updates whenever `position` changes, but if we let go, we can still animate it!
 
-Let's do the same thing for the right.
+And now that `x` is expressed in terms of `position` on the left, we should be able to do the same thing for the right.
+
+Let's rename `x` to `xLeft` and make a new MV `xRight`. Debug it.
+
+What should the logic be? Once its past 320 - the width! - xRight should start tracking it. Otherwise reset to 0.
 
 ```tsx
 useMotionValueEvent(position, "change", (latest) => {
@@ -189,79 +207,83 @@ useMotionValueEvent(position, "change", (latest) => {
 });
 ```
 
-Last thing to do is grow right.
-
-# 5: Animate Right icon
-
-Debug to get a sense
-
-```tsx
-<div>
-  X: <motion.span>{useTransform(() => Math.floor(x.get()))}</motion.span>
-</div>
-```
-
-Want a new one
-
-```tsx
-let xLeft = useMotionValue(0);
-let xRight = useMotionValue(0);
-```
-
-```tsx
-<motion.p>{useTransform(() => Math.floor(xLeft.get()))}</motion.p>
-<motion.p>{useTransform(() => Math.floor(xRight.get()))}</motion.p>
-```
-
-Now add condition:
-
-```tsx
-if (overflow <= 0) {
-  xLeft.set(overflow);
-} else if (overflow >= 320) {
-  xRight.set(overflow - 320);
-} else {
-  xLeft.set(0);
-  xRight.set(0);
-}
-```
-
-And reset on release:
+Nice! Now when we let go, let's also animate it:
 
 ```tsx
 onLostPointerCapture={() => {
-  animate(xLeft, 0, { type: "spring", bounce: 0.5 });
-  animate(xRight, 0, { type: "spring", bounce: 0.5 });
+  animate(xLeft, 0, { type: "spring", bounce: 0.5, });
+  animate(xRight, 0, { type: "spring", bounce: 0.5, });
 }}
 ```
 
 Sweet!
 
-# 6: Grow bar right
+Now let's make the bar stretch right.
 
-Current for left:
+# 6: Stretch bar right
 
-```tsx
-return (320 - xLeft.get()) / 320;
-```
-
-For right logic is reverse:
+Should just be the opposite of left. Comment it out and reverse:
 
 ```tsx
-return (320 + xRight.get()) / 320;
+<motion.div
+  style={{
+    scaleX: useTransform(() => {
+      return (320 + xRight.get()) / 320;
+    }),
+    transformOrigin: "left",
+  }}
+  // style={{
+  //   scaleX: useTransform(() => {
+  //     return (320 - xLeft.get()) / 320;
+  //   }),
+  //   transformOrigin: "right",
+  // }}
+  className="flex h-1.5 grow"
+/>
 ```
 
-Also need transformOrigin left. Cool right side works!
+Works - and animates! So cool.
 
-So let's make dynamic. If dragging to left xRight is 0.
+So, we need to know if we're dragging past the left or the right so we can switch this logic. How can we know?
+
+Let's add some state!
 
 ```tsx
-scaleX: useTransform(() => {
-  return xRight.get() === 0
-    ? (320 - xLeft.get()) / 320
-    : (320 + xRight.get()) / 320;
-}),
-transformOrigin: useTransform(() => {
-  return xRight.get() === 0 ? "right" : "left";
-}),
+let [region, setRegion] = useState("middle");
 ```
+
+and set it in our change event:
+
+```tsx
+useMotionValueEvent(position, "change", (latestValue) => {
+  if (latestValue < 0) {
+    setRegion("left");
+    xLeft.set(latestValue);
+  } else if (latestValue > 320) {
+    setRegion("right");
+    xRight.set(latestValue - 320);
+  } else {
+    setRegion("middle");
+    xLeft.set(0);
+    xRight.set(0);
+  }
+});
+```
+
+Now use it in style:
+
+```tsx
+<motion.div
+  style={{
+    scaleX: useTransform(() => {
+      return region === "left"
+        ? (320 - xLeft.get()) / 320
+        : (320 + xRight.get()) / 320;
+    }),
+    transformOrigin: region === "left" ? "right" : "left",
+  }}
+  className="flex h-1.5 grow"
+/>
+```
+
+It works!

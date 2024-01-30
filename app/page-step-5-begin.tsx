@@ -2,43 +2,21 @@
 
 import { SpeakerWaveIcon, SpeakerXMarkIcon } from "@heroicons/react/20/solid";
 import * as Slider from "@radix-ui/react-slider";
-import {
-  animate,
-  motion,
-  useMotionValue,
-  useMotionValueEvent,
-  useTransform,
-} from "framer-motion";
+import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { useState } from "react";
 
 export default function Page() {
   let [volume, setVolume] = useState(50);
 
-  let [region, setRegion] = useState("middle");
   let position = useMotionValue(0);
-  let xLeft = useMotionValue(0);
-  let xRight = useMotionValue(0);
-
-  useMotionValueEvent(position, "change", (latestValue) => {
-    if (latestValue < 0) {
-      setRegion("left");
-      xLeft.set(latestValue);
-    } else if (latestValue > 320) {
-      setRegion("right");
-      xRight.set(latestValue - 320);
-    } else {
-      setRegion("middle");
-      xLeft.set(0);
-      xRight.set(0);
-    }
-  });
+  let x = useMotionValue(0);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
       <div className="w-full">
         <div className="flex justify-center">
           <div className="flex w-full max-w-sm items-center gap-3">
-            <motion.div style={{ x: xLeft }}>
+            <motion.div style={{ x: x }}>
               <SpeakerXMarkIcon className="size-5 text-white" />
             </motion.div>
 
@@ -51,22 +29,23 @@ export default function Page() {
                   let bounds = e.currentTarget.getBoundingClientRect();
                   let overflow = e.clientX - bounds.x;
 
-                  position.set(overflow);
+                  if (overflow < 0) {
+                    x.set(overflow);
+                  } else {
+                    x.set(0);
+                  }
                 }
               }}
               onLostPointerCapture={() => {
-                animate(xLeft, 0, { type: "spring", bounce: 0.5 });
-                animate(xRight, 0, { type: "spring", bounce: 0.5 });
+                animate(x, 0, { type: "spring", bounce: 0.5 });
               }}
             >
               <motion.div
                 style={{
                   scaleX: useTransform(() => {
-                    return region === "left"
-                      ? (320 - xLeft.get()) / 320
-                      : (320 + xRight.get()) / 320;
+                    return (320 - x.get()) / 320;
                   }),
-                  transformOrigin: region === "left" ? "right" : "left",
+                  transformOrigin: "right",
                 }}
                 className="flex h-1.5 grow"
               >
@@ -77,9 +56,9 @@ export default function Page() {
               <Slider.Thumb />
             </Slider.Root>
 
-            <motion.div style={{ x: xRight }}>
+            <div>
               <SpeakerWaveIcon className="size-5 text-white" />
-            </motion.div>
+            </div>
           </div>
         </div>
       </div>
@@ -91,15 +70,9 @@ export default function Page() {
         </motion.span>
       </div>
       <div>
-        xLeft:{" "}
+        x:{" "}
         <motion.span className="tabular-nums">
-          {useTransform(() => Math.floor(xLeft.get()))}
-        </motion.span>
-      </div>
-      <div>
-        xRight:{" "}
-        <motion.span className="tabular-nums">
-          {useTransform(() => Math.floor(xRight.get()))}
+          {useTransform(() => Math.floor(x.get()))}
         </motion.span>
       </div>
 
