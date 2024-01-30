@@ -296,15 +296,13 @@ Let's take a look at what we have. Let's add `region` to debug:
 <div>region: {region}</div>
 ```
 
-xLeft and xRight are derived from position when we drag but they animate independently based on the region we let go in. If let go in left, left side should animate but right should stay at 0.
-
-Now that we have region, should be able to refactor xLeft and xRight to a single variable.
-
-Let's bring back x:
+xLeft and xRight are never used at the same time. so let's see if we clean this up and bring back an single x MV.
 
 ```tsx
 let x = useMotionValue(0);
 ```
+
+and add to debugger.
 
 and set it in the change event:
 
@@ -377,7 +375,7 @@ This region state is nice and easy, and everything still works when we let go.
 
 Right now 320 hard coded - change `max-w-sm` to `max-w-xs` and it breaks.
 
-Where does it come from? `bounds` in onPointerMove. But really its this element. So let's get a ref.
+Where does it come from? Width of slider element. So let's get a ref.
 
 ```tsx
 let ref = useRef<ElementRef<typeof Slider.Root>>(null);
@@ -385,32 +383,19 @@ let ref = useRef<ElementRef<typeof Slider.Root>>(null);
 <Slider.Root ref={ref} />;
 ```
 
-Update onPointerMove
-
-```tsx
-onPointerMove={(e) => {
-  if (e.buttons > 0 && ref.current) {
-    let bounds = ref.current.getBoundingClientRect();
-    let overflow = e.clientX - bounds.x;
-
-    position.set(overflow);
-  }
-}}
-```
-
-and our change event
+Update our change event
 
 ```tsx
 useMotionValueEvent(position, "change", (latestValue) => {
   if (ref.current) {
-    let { width } = ref.current.getBoundingClientRect();
+    let bounds = ref.current.getBoundingClientRect();
 
     if (latestValue < 0) {
       setRegion("left");
       x.set(latestValue);
-    } else if (latestValue > width) {
+    } else if (latestValue > bounds.width) {
       setRegion("right");
-      x.set(latestValue - width);
+      x.set(latestValue - bounds.width);
     } else {
       setRegion("middle");
       x.set(0);
@@ -419,7 +404,7 @@ useMotionValueEvent(position, "change", (latestValue) => {
 });
 ```
 
-And finally scale:
+And the scale:
 
 ```tsx
 <motion.div
@@ -442,7 +427,9 @@ Sweet! No more magic number, works for max-w-xs.
 
 Let's clean this up a bit more.
 
-We're using bounds to set position, then also using it in change listener to calculate x. Let's simplify pointermove to just set clientx
+We're using bounds to set position, then also using it in change listener to calculate x. Logic is split.
+
+Let's simplify pointermove to just set clientX:
 
 ```tsx
 onPointerMove={(e) => {
@@ -548,8 +535,13 @@ but that's linear. Let's use something that decays more the farther we drag.
 
 ```tsx
 // Sigmoid function. Output is between 0 and 1.
-function decay(value: number) {
-  return 1 / (1 + Math.exp(-value)) - 0.5;
+// https://en.wikipedia.org/wiki/Sigmoid_function
+// Sigmoid-based decay function
+function decay(value: number, max: number) {
+  let entry = value / max;
+  let sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5);
+
+  return sigmoid * max;
 }
 ```
 
@@ -557,7 +549,7 @@ decay maps [0, 1] to [0, 1]. So pick a max pixels and convert to fraction:
 
 ```tsx
 let newValue = left - latestValue;
-overflow.set(decay(newValue / 100) * 100);
+overflow.set(decay(newValue, 50));
 ```
 
 Awesome! Let's cover all branches.
@@ -577,22 +569,8 @@ if (latestValue < left) {
   newValue = 0;
 }
 
-overflow.set(decay(newValue / 75) * 75);
+overflow.set(decay(newValue, 75));
 ```
-
-Make a const for max pixels:
-
-```tsx
-const MAX_PIXELS = 75;
-```
-
-and use:
-
-```tsx
-overflow.set(decay(newValue / MAX_PIXELS) * MAX_PIXELS);
-```
-
-Now can tweak.
 
 # 10: Grow on hover
 
