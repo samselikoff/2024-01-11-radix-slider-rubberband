@@ -11,14 +11,63 @@ import {
 } from "framer-motion";
 import { ElementRef, useRef, useState } from "react";
 
-// Sigmoid function. Output is between 0 and 1.
-function decay(value: number) {
-  return 1 / (1 + Math.exp(-value)) - 0.5;
+// Sigmoid-based decay function
+function decay(value: number, max: number) {
+  let entry = value / max;
+  let sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5);
+
+  return sigmoid * max;
 }
 
-const MAX_PIXELS = 150;
-
 export default function Page() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-20">
+      <Begin />
+      <End />
+    </div>
+  );
+}
+
+function Begin() {
+  let [volume, setVolume] = useState(50);
+
+  return (
+    <div className="w-full">
+      <div className="w-full px-12">
+        <div className="flex justify-center">
+          <div className="flex w-full max-w-sm items-center gap-3">
+            <div>
+              <SpeakerXMarkIcon className="size-5 text-white" />
+            </div>
+
+            <Slider.Root
+              value={[volume]}
+              onValueChange={([v]) => setVolume(v)}
+              className="relative flex w-full grow cursor-grab touch-none items-center py-4 active:cursor-grabbing"
+            >
+              <div className="flex h-1.5 grow">
+                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-gray-500">
+                  <Slider.Range className="absolute h-full bg-white" />
+                </Slider.Track>
+              </div>
+              <Slider.Thumb />
+            </Slider.Root>
+
+            <div>
+              <SpeakerWaveIcon className="size-5 text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p className="mt-1 text-center font-medium">
+        Volume: <span className="tabular-nums">{volume}</span>
+      </p>
+    </div>
+  );
+}
+
+function End() {
   let [volume, setVolume] = useState(50);
 
   let ref = useRef<ElementRef<typeof Slider.Root>>(null);
@@ -27,39 +76,43 @@ export default function Page() {
   let overflow = useMotionValue(0);
   let scale = useMotionValue(1);
 
-  useMotionValueEvent(clientX, "change", (latestValue) => {
+  useMotionValueEvent(clientX, "change", (latest) => {
     if (ref.current) {
       let { left, right } = ref.current.getBoundingClientRect();
       let newValue;
 
-      if (latestValue < left) {
+      if (latest < left) {
         setRegion("left");
-        newValue = left - latestValue;
-      } else if (latestValue > right) {
+        newValue = left - latest;
+      } else if (latest > right) {
         setRegion("right");
-        newValue = latestValue - right;
+        newValue = latest - right;
       } else {
         setRegion("middle");
         newValue = 0;
       }
 
-      overflow.set(decay(newValue / MAX_PIXELS) * MAX_PIXELS);
+      overflow.set(decay(newValue, 75));
     }
   });
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="w-full px-12">
+    <div className="w-full">
+      <div className="w-full">
         <div className="flex justify-center">
           <motion.div
-            onHoverStart={() =>
-              animate(scale, 1.2, { type: "spring", bounce: 0, duration: 0.4 })
-            }
-            onHoverEnd={() =>
-              animate(scale, 1, { type: "spring", bounce: 0, duration: 0.4 })
-            }
-            style={{ scale, opacity: useTransform(scale, [1, 1.2], [0.8, 1]) }}
-            className="flex w-full items-center gap-3 px-60"
+            // whileHover={{ scale: 1.2 }}
+            onHoverStart={() => {
+              animate(scale, 1.2);
+            }}
+            onHoverEnd={() => {
+              animate(scale, 1);
+            }}
+            style={{
+              scale,
+              // opacity: useTransform(scale, [1, 1.2], [0.7, 1])
+            }}
+            className="flex w-full max-w-sm items-center gap-3"
           >
             <motion.div
               animate={{
@@ -76,14 +129,13 @@ export default function Page() {
             </motion.div>
 
             <Slider.Root
+              ref={ref}
               value={[volume]}
               onValueChange={([v]) => setVolume(v)}
               className="relative flex w-full grow cursor-grab touch-none items-center py-4 active:cursor-grabbing"
-              ref={ref}
               onPointerMove={(e) => {
                 if (e.buttons > 0) {
-                  overflow.stop();
-                  clientX.set(e.clientX);
+                  clientX.jump(e.clientX);
                 }
               }}
               onLostPointerCapture={() => {
@@ -92,24 +144,22 @@ export default function Page() {
             >
               <motion.div
                 style={{
-                  transformOrigin: region === "left" ? "right" : "left",
                   scaleX: useTransform(() => {
                     if (ref.current) {
-                      return (
-                        1 +
-                        overflow.get() /
-                          ref.current.getBoundingClientRect().width
-                      );
+                      let { width } = ref.current.getBoundingClientRect();
+
+                      return 1 + overflow.get() / width;
                     }
                   }),
-                  scaleY: useTransform(() => 1 - overflow.get() / MAX_PIXELS),
+                  scaleY: useTransform(overflow, [0, 75], [1, 0.8]),
+                  transformOrigin: region === "left" ? "right" : "left",
                   height: useTransform(scale, [1, 1.2], [6, 16]),
                   marginTop: useTransform(scale, [1, 1.2], [0, -5]),
                   marginBottom: useTransform(scale, [1, 1.2], [0, -5]),
                 }}
                 className="flex grow"
               >
-                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-gray-600">
+                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-gray-500">
                   <Slider.Range className="absolute h-full bg-white" />
                 </Slider.Track>
               </motion.div>
@@ -133,22 +183,20 @@ export default function Page() {
         </div>
       </div>
 
-      <div className="hidden text-center">
-        <div>
-          clientX:{" "}
-          <motion.span className="tabular-nums">
-            {useTransform(() => Math.floor(clientX.get()))}
-          </motion.span>
-        </div>
-        <div>
-          overflow:{" "}
-          <motion.span className="tabular-nums">
-            {useTransform(() => Math.floor(overflow.get()))}
-          </motion.span>
-        </div>
-
-        <div>region: {region}</div>
+      {/* <div>
+        clientX:{" "}
+        <motion.span className="tabular-nums">
+          {useTransform(() => Math.floor(clientX.get()))}
+        </motion.span>
       </div>
+
+      <div>
+        overflow:{" "}
+        <motion.span className="tabular-nums">
+          {useTransform(() => Math.floor(overflow.get()))}
+        </motion.span>
+      </div>
+      <div>region: {region}</div> */}
 
       <p className="mt-1 text-center font-medium">
         Volume: <span className="tabular-nums">{volume}</span>
