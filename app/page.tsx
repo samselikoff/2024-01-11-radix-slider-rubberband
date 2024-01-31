@@ -14,7 +14,7 @@ import { ElementRef, useRef, useState } from "react";
 // Sigmoid-based decay function
 function decay(value: number, max: number) {
   let entry = value / max;
-  let sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5);
+  let sigmoid = 2 / (1 + Math.exp(-entry)) - 1;
 
   return sigmoid * max;
 }
@@ -53,7 +53,6 @@ export default function Page() {
       <div className="w-full">
         <div className="flex justify-center">
           <motion.div
-            // whileHover={{ scale: 1.2 }}
             onHoverStart={() => {
               animate(scale, 1.2);
             }}

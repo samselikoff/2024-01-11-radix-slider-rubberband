@@ -534,12 +534,11 @@ overflow.set((left - latestValue) / 3);
 but that's linear. Let's use something that decays more the farther we drag.
 
 ```tsx
-// Sigmoid function. Output is between 0 and 1.
-// https://en.wikipedia.org/wiki/Sigmoid_function
 // Sigmoid-based decay function
+// https://en.wikipedia.org/wiki/Sigmoid_function
 function decay(value: number, max: number) {
   let entry = value / max;
-  let sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5);
+  let sigmoid = 2 / (1 + Math.exp(-entry)) - 1;
 
   return sigmoid * max;
 }
