@@ -151,8 +151,16 @@ function End() {
                       return 1 + overflow.get() / width;
                     }
                   }),
+                  transformOrigin: useTransform(() => {
+                    if (ref.current) {
+                      let { left, width } = ref.current.getBoundingClientRect();
+
+                      return clientX.get() < left + width / 2
+                        ? "right"
+                        : "left";
+                    }
+                  }),
                   scaleY: useTransform(overflow, [0, 75], [1, 0.8]),
-                  transformOrigin: region === "left" ? "right" : "left",
                   height: useTransform(scale, [1, 1.2], [6, 16]),
                   marginTop: useTransform(scale, [1, 1.2], [0, -5]),
                   marginBottom: useTransform(scale, [1, 1.2], [0, -5]),
