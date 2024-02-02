@@ -83,7 +83,7 @@ export default function Page() {
                 ),
               }}
             >
-              <SpeakerXMarkIcon className="size-5 text-white" />
+              <SpeakerXMarkIcon className="size-5 translate-x-0 translate-y-0 text-white" />
             </motion.div>
 
             <Slider.Root
@@ -118,7 +118,7 @@ export default function Page() {
                 }}
                 className="flex grow"
               >
-                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-gray-500">
+                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-gray-500 ">
                   <Slider.Range className="absolute h-full bg-white" />
                 </Slider.Track>
               </motion.div>
@@ -136,7 +136,7 @@ export default function Page() {
                 ),
               }}
             >
-              <SpeakerWaveIcon className="size-5 text-white" />
+              <SpeakerWaveIcon className="size-5 translate-x-0 translate-y-0 text-white" />
             </motion.div>
           </motion.div>
         </div>
