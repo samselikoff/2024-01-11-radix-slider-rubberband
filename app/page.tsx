@@ -12,52 +12,65 @@ import {
 import { ElementRef, useRef, useState } from "react";
 
 // Sigmoid-based decay function
-// https://en.wikipedia.org/wiki/Sigmoid_function
 function decay(value: number, max: number) {
   let entry = value / max;
-  let sigmoid = 2 / (1 + Math.exp(-entry)) - 1;
+  let sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5);
 
   return sigmoid * max;
 }
 
 export default function Page() {
   let [volume, setVolume] = useState(50);
+  let [debug, setDebug] = useState(false);
 
+  let ref = useRef<ElementRef<typeof Slider.Root>>(null);
+  let [region, setRegion] = useState("middle");
   let clientX = useMotionValue(0);
   let overflow = useMotionValue(0);
   let scale = useMotionValue(1);
-  let [region, setRegion] = useState<"left" | "middle" | "right">("middle");
-  let ref = useRef<ElementRef<typeof Slider.Root>>(null);
 
   useMotionValueEvent(clientX, "change", (latest) => {
     if (ref.current) {
       let { left, right } = ref.current.getBoundingClientRect();
-      let newOverflow;
+      let newValue;
 
       if (latest < left) {
         setRegion("left");
-        newOverflow = left - latest;
+        newValue = left - latest;
       } else if (latest > right) {
         setRegion("right");
-        newOverflow = latest - right;
+        newValue = latest - right;
       } else {
         setRegion("middle");
-        newOverflow = 0;
+        newValue = 0;
       }
 
-      overflow.jump(decay(newOverflow, 75));
+      overflow.set(decay(newValue, 75));
     }
   });
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="w-full">
-        <div className="flex justify-center">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center">
+      <div className="flex w-full flex-col items-center">
+        <div className="flex w-full select-none justify-center px-12">
           <motion.div
-            onHoverStart={() => animate(scale, 1.2)}
-            onHoverEnd={() => animate(scale, 1)}
-            style={{ scale }}
-            className="flex w-full items-center gap-3 px-60"
+            onHoverStart={() => {
+              animate(scale, 1.2);
+            }}
+            onHoverEnd={() => {
+              animate(scale, 1);
+            }}
+            onPointerDown={() => {
+              animate(scale, 1.2);
+            }}
+            onPointerUp={() => {
+              animate(scale, 1);
+            }}
+            style={{
+              scale,
+              opacity: useTransform(scale, [1, 1.2], [0.7, 1]),
+            }}
+            className="flex w-full touch-none select-none items-center justify-center gap-3"
           >
             <motion.div
               animate={{
@@ -70,17 +83,18 @@ export default function Page() {
                 ),
               }}
             >
-              <SpeakerXMarkIcon className="size-5 text-white" />
+              <SpeakerXMarkIcon className="size-5 translate-x-0 translate-y-0 text-white" />
             </motion.div>
 
             <Slider.Root
               ref={ref}
               value={[volume]}
-              onValueChange={([v]) => setVolume(v)}
-              className="relative flex w-full grow cursor-grab touch-none items-center py-4 active:cursor-grabbing"
+              onValueChange={([v]) => setVolume(Math.floor(v))}
+              step={0.01}
+              className="relative flex w-full max-w-[200px] grow cursor-grab touch-none select-none items-center py-4 active:cursor-grabbing"
               onPointerMove={(e) => {
                 if (e.buttons > 0) {
-                  clientX.set(e.clientX);
+                  clientX.jump(e.clientX);
                 }
               }}
               onLostPointerCapture={() => {
@@ -91,20 +105,28 @@ export default function Page() {
                 style={{
                   scaleX: useTransform(() => {
                     if (ref.current) {
-                      let bounds = ref.current.getBoundingClientRect();
+                      let { width } = ref.current.getBoundingClientRect();
 
-                      return (bounds.width + overflow.get()) / bounds.width;
+                      return 1 + overflow.get() / width;
                     }
                   }),
-                  scaleY: useTransform(overflow, [0, 75], [1, 0.5]),
-                  transformOrigin: region === "left" ? "right" : "left",
-                  height: useTransform(scale, [1, 1.2], [6, 16]),
-                  marginTop: useTransform(scale, [1, 1.2], [0, -5]),
-                  marginBottom: useTransform(scale, [1, 1.2], [0, -5]),
+                  scaleY: useTransform(overflow, [0, 75], [1, 0.8]),
+                  transformOrigin: useTransform(() => {
+                    if (ref.current) {
+                      let { left, width } = ref.current.getBoundingClientRect();
+
+                      return clientX.get() < left + width / 2
+                        ? "right"
+                        : "left";
+                    }
+                  }),
+                  height: useTransform(scale, [1, 1.2], [6, 12]),
+                  marginTop: useTransform(scale, [1, 1.2], [0, -3]),
+                  marginBottom: useTransform(scale, [1, 1.2], [0, -3]),
                 }}
                 className="flex grow"
               >
-                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-gray-500">
+                <Slider.Track className="relative isolate h-full grow overflow-hidden rounded-full bg-gray-500 ">
                   <Slider.Range className="absolute h-full bg-white" />
                 </Slider.Track>
               </motion.div>
@@ -122,31 +144,50 @@ export default function Page() {
                 ),
               }}
             >
-              <SpeakerWaveIcon className="size-5 text-white" />
+              <SpeakerWaveIcon className="size-5 translate-x-0 translate-y-0 text-white" />
             </motion.div>
           </motion.div>
         </div>
+
+        <p className="mt-1 text-center font-medium">
+          Volume: <span className="tabular-nums">{volume}</span>
+        </p>
+
+        <div className="mt-10">
+          <button
+            onClick={() => setDebug(!debug)}
+            className="mt-4 w-full text-center text-sm font-medium text-gray-500 hover:underline"
+          >
+            {debug ? "Close" : "Debug"}
+          </button>
+          <div
+            className={`${
+              debug ? "" : "opacity-0"
+            } mt-8 border border-gray-800 px-4 py-2`}
+          >
+            <table className="mx-auto max-w-xs text-gray-500">
+              <tbody>
+                <tr>
+                  <td className="text-right">clientX:</td>
+                  <motion.td className="w-[80px] pl-4 tabular-nums">
+                    {useTransform(() => Math.floor(clientX.get()))}
+                  </motion.td>
+                </tr>
+                <tr>
+                  <td className="text-right">overflow:</td>
+                  <motion.td className="w-[80px] pl-4 tabular-nums">
+                    {useTransform(() => Math.floor(overflow.get()))}
+                  </motion.td>
+                </tr>
+                <tr>
+                  <td className="text-right">region:</td>
+                  <td className="w-[80px] pl-4">{region}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-
-      {/* <div className="w-[120px]">
-        <p>
-          clientX:{" "}
-          <motion.span className="tabular-nums">
-            {useTransform(() => Math.floor(clientX.get()))}
-          </motion.span>
-        </p>
-        <p>
-          overflow:{" "}
-          <motion.span className="tabular-nums">
-            {useTransform(() => Math.floor(overflow.get()))}
-          </motion.span>
-        </p>
-        <p>region: {region}</p>
-      </div> */}
-
-      <p className="mt-1 text-center font-medium">
-        Volume: <span className="tabular-nums">{volume}</span>
-      </p>
     </div>
   );
 }

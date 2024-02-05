@@ -11,66 +11,66 @@ import {
 } from "framer-motion";
 import { ElementRef, useRef, useState } from "react";
 
-// Sigmoid function. Output is between 0 and 1.
-function decay(x: number) {
-  return 1 / (1 + Math.exp(-x)) - 0.5;
-}
+// Sigmoid-based decay function
+function decay(value: number, max: number) {
+  let entry = value / max;
+  let sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5);
 
-const MAX_PIXELS = 50;
+  return sigmoid * max;
+}
 
 export default function Page() {
   let [volume, setVolume] = useState(50);
 
-  // Animation state
   let ref = useRef<ElementRef<typeof Slider.Root>>(null);
-  let [bounds, setBounds] = useState("initial");
+  let [region, setRegion] = useState("middle");
   let clientX = useMotionValue(0);
-  let pixelsOverflow = useMotionValue(0);
+  let overflow = useMotionValue(0);
+  let scale = useMotionValue(1);
 
   useMotionValueEvent(clientX, "change", (latest) => {
     if (ref.current) {
-      let { x, width } = ref.current.getBoundingClientRect();
-      let newOverflow: number;
+      let { left, right } = ref.current.getBoundingClientRect();
+      let newValue;
 
-      if (latest < x) {
-        setBounds("left");
-        newOverflow = x - latest;
-      } else if (latest > x + width) {
-        setBounds("right");
-        newOverflow = latest - x - width;
+      if (latest < left) {
+        setRegion("left");
+        newValue = left - latest;
+      } else if (latest > right) {
+        setRegion("right");
+        newValue = latest - right;
       } else {
-        setBounds("initial");
-        newOverflow = 0;
+        setRegion("middle");
+        newValue = 0;
       }
 
-      pixelsOverflow.set(decay(newOverflow / MAX_PIXELS) * MAX_PIXELS);
+      overflow.set(decay(newValue, 75));
     }
   });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="w-full px-12">
-        <motion.div
-          whileHover="hovered"
-          className="flex justify-center"
-          initial={false}
-          animate={bounds}
-          variants={{
-            hovered: {
-              scale: 1.1,
-              transition: { type: "spring", bounce: 0, duration: 0.4 },
-            },
-          }}
-        >
-          <div className="flex w-full max-w-sm items-center gap-3">
+      <div className="w-full">
+        <div className="flex justify-center">
+          <motion.div
+            // whileHover={{ scale: 1.2 }}
+            onHoverStart={() => {
+              animate(scale, 1.2);
+            }}
+            onHoverEnd={() => {
+              animate(scale, 1);
+            }}
+            style={{ scale, opacity: useTransform(scale, [1, 1.2], [0.7, 1]) }}
+            className="flex w-full items-center gap-3 px-40"
+          >
             <motion.div
               animate={{
-                scale: bounds === "left" ? [1, 1.4, 1] : 1,
+                scale: region === "left" ? [1, 1.4, 1] : 1,
                 transition: { duration: 0.25 },
               }}
               style={{
-                translateX: useTransform(() =>
-                  bounds === "left" ? -pixelsOverflow.get() : 0,
+                x: useTransform(() =>
+                  region === "left" ? -overflow.get() / scale.get() : 0,
                 ),
               }}
             >
@@ -78,51 +78,38 @@ export default function Page() {
             </motion.div>
 
             <Slider.Root
+              ref={ref}
               value={[volume]}
               onValueChange={([v]) => setVolume(v)}
-              ref={ref}
+              className="relative flex w-full grow cursor-grab touch-none items-center py-4 active:cursor-grabbing"
               onPointerMove={(e) => {
                 if (e.buttons > 0) {
-                  clientX.set(e.clientX);
+                  clientX.jump(e.clientX);
                 }
               }}
               onLostPointerCapture={() => {
-                animate(pixelsOverflow, 0, { type: "spring", bounce: 0.5 });
+                animate(overflow, 0, { type: "spring", bounce: 0.5 });
               }}
-              className="relative flex w-full grow cursor-grab touch-none select-none items-center py-4 active:cursor-grabbing"
             >
               <motion.div
                 style={{
                   scaleX: useTransform(() => {
-                    if (!ref.current) {
-                      return 1;
-                    }
-
-                    return 1 + pixelsOverflow.get() / ref.current.clientWidth;
-                  }),
-                  scaleY: useTransform(() => {
-                    return 1 - pixelsOverflow.get() / MAX_PIXELS;
-                  }),
-                  transformOrigin: useTransform(() => {
                     if (ref.current) {
-                      let { x, width } = ref.current.getBoundingClientRect();
-                      return clientX.get() < x + width / 2 ? "right" : "left";
+                      let { width } = ref.current.getBoundingClientRect();
+
+                      return 1 + overflow.get() / width;
                     }
                   }),
-                  height: 6,
+                  scaleY: useTransform(overflow, [0, 75], [1, 0.8]),
+                  transformOrigin: region === "left" ? "right" : "left",
+                  height: useTransform(scale, [1, 1.2], [6, 16]),
+                  marginTop: useTransform(scale, [1, 1.2], [0, -5]),
+                  marginBottom: useTransform(scale, [1, 1.2], [0, -5]),
                 }}
-                variants={{
-                  hovered: {
-                    height: 16,
-                    marginTop: -5,
-                    marginBottom: -5,
-                  },
-                }}
-                transition={{ type: "spring", bounce: 0, duration: 0.4 }}
                 className="flex grow"
               >
-                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-white">
-                  <Slider.Range className="absolute h-full bg-sky-500" />
+                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-gray-500">
+                  <Slider.Range className="absolute h-full bg-white" />
                 </Slider.Track>
               </motion.div>
               <Slider.Thumb />
@@ -130,16 +117,35 @@ export default function Page() {
 
             <motion.div
               animate={{
-                scale: bounds === "right" ? [1, 1.4, 1] : 1,
+                scale: region === "right" ? [1, 1.4, 1] : 1,
                 transition: { duration: 0.25 },
               }}
-              style={{ translateX: bounds === "right" ? pixelsOverflow : 0 }}
+              style={{
+                x: useTransform(() =>
+                  region === "right" ? overflow.get() / scale.get() : 0,
+                ),
+              }}
             >
               <SpeakerWaveIcon className="size-5 text-white" />
             </motion.div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
+
+      {/* <div>
+        clientX:{" "}
+        <motion.span className="tabular-nums">
+          {useTransform(() => Math.floor(clientX.get()))}
+        </motion.span>
+      </div>
+
+      <div>
+        overflow:{" "}
+        <motion.span className="tabular-nums">
+          {useTransform(() => Math.floor(overflow.get()))}
+        </motion.span>
+      </div>
+      <div>region: {region}</div> */}
 
       <p className="mt-1 text-center font-medium">
         Volume: <span className="tabular-nums">{volume}</span>
