@@ -50,10 +50,6 @@ export default function Page() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center">
-      {/* <p className="mb-4 text-center font-medium">
-        Volume: <span className="tabular-nums">{volume}</span>
-      </p> */}
-
       <div className="w-full">
         <div className="flex select-none justify-center px-12">
           <motion.div
@@ -69,8 +65,11 @@ export default function Page() {
             onPointerUp={() => {
               animate(scale, 1);
             }}
-            style={{ scale, opacity: useTransform(scale, [1, 1.2], [0.7, 1]) }}
-            className="flex w-full items-center justify-center gap-3"
+            style={{
+              scale,
+              opacity: useTransform(scale, [1, 1.2], [0.7, 1]),
+            }}
+            className="flex w-full touch-none select-none items-center justify-center gap-3"
           >
             <motion.div
               animate={{
@@ -111,14 +110,22 @@ export default function Page() {
                     }
                   }),
                   scaleY: useTransform(overflow, [0, 75], [1, 0.8]),
-                  transformOrigin: region === "left" ? "right" : "left",
-                  height: useTransform(scale, [1, 1.2], [6, 16]),
-                  marginTop: useTransform(scale, [1, 1.2], [0, -5]),
-                  marginBottom: useTransform(scale, [1, 1.2], [0, -5]),
+                  transformOrigin: useTransform(() => {
+                    if (ref.current) {
+                      let { left, width } = ref.current.getBoundingClientRect();
+
+                      return clientX.get() < left + width / 2
+                        ? "right"
+                        : "left";
+                    }
+                  }),
+                  height: useTransform(scale, [1, 1.2], [6, 12]),
+                  marginTop: useTransform(scale, [1, 1.2], [0, -3]),
+                  marginBottom: useTransform(scale, [1, 1.2], [0, -3]),
                 }}
                 className="flex grow"
               >
-                <Slider.Track className="relative h-full grow overflow-hidden rounded-full bg-gray-500 ">
+                <Slider.Track className="relative isolate h-full grow overflow-hidden rounded-full bg-gray-500 ">
                   <Slider.Range className="absolute h-full bg-white" />
                 </Slider.Track>
               </motion.div>
@@ -140,6 +147,10 @@ export default function Page() {
             </motion.div>
           </motion.div>
         </div>
+
+        <p className="mt-1 text-center font-medium">
+          Volume: <span className="tabular-nums">{volume}</span>
+        </p>
       </div>
     </div>
   );
